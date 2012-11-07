@@ -16,13 +16,14 @@
 #include <stdlib.h>
 
 @interface UIWebViewWithHeaderView() {
+    UIWebView *_webView;
     UIView *_headerView;
     UIView *_footerView;
     float _headerViewHeight;
     float _footerViewHeight;
 }
 
-@property(nonatomic,retain) UIScrollView* webScrollView;
+@property(nonatomic,strong) UIScrollView* webScrollView;
 @property(nonatomic,assign) id<UIScrollViewDelegate> oldScrollViewDelegate;
 @property(nonatomic,assign) float actualContentHeight;
 @property(nonatomic,assign) float actualContentWidth;
@@ -59,6 +60,96 @@
     return self;
 }
 
+-(UIWebView *)webView
+{
+    return _webView;
+}
+
+-(void) setHeaderView:(UIView *)view {
+    
+	// remove old header if there is one
+	if (self->_headerView) {
+		if ([self->_headerView superview] == self) {
+			[self->_headerView removeFromSuperview];
+		}
+		self->_headerView = nil;
+	}
+	
+	// set new one
+	self->_headerView = view;
+	
+	[self setNeedsLayout];
+}
+
+-(UIView*) headerView {
+	return self->_headerView;
+}
+
+-(void) setFooterView:(UIView *)view {
+	
+	// remove old footer if there is one
+	if (self->_footerView) {
+		if ([self->_footerView superview] == self) {
+			[self->_footerView removeFromSuperview];
+		}
+		self->_footerView = nil;
+	}
+	
+	// set new one
+	self->_footerView = view;
+	
+	[self setNeedsLayout];
+}
+
+-(UIView*) footerView {
+	return self->_footerView;
+}
+
+-(void) setHeaderViewHeight:(float)height {
+	self->_headerViewHeight = height;
+	[self setNeedsLayout];
+}
+
+-(float) headerViewHeight {
+	return self->_headerViewHeight;
+}
+
+-(void) setFooterViewHeight:(float)height {
+	self->_footerViewHeight = height;
+	[self setNeedsLayout];
+}
+
+-(float) footerViewHeight {
+	return self->_footerViewHeight;
+}
+
+- (void)recalculateContentHeight {
+    NSString* bottomDivID = [NSString stringWithFormat:@"bottomdiv%u", arc4random()];
+    [self.webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@" \
+                                                          var ele = document.createElement('div'); \
+                                                          ele.setAttribute('id', '%@'); \
+                                                          ele.setAttribute('style', 'width: 100%%; height: 1px; clear: both;'); \
+                                                          document.body.appendChild(ele);", bottomDivID]];
+    
+    // get the actual content size of the body
+    self.actualContentHeight = [[self.webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@"document.getElementById('%@').offsetTop", bottomDivID]] floatValue];
+    if (self.actualContentHeight < 1.0) {
+        self.actualContentHeight = self.frame.size.height / 2 - self.headerViewHeight - self.footerViewHeight;
+    }
+    
+    self.actualContentWidth = self.webScrollView.contentSize.width;
+    if (self.actualContentWidth < 1.0) {
+        self.actualContentWidth = self.frame.size.width;
+    }
+    
+    self.webScrollView.contentInset = UIEdgeInsetsMake(self.headerViewHeight, 0, self.footerViewHeight, 0);
+    self.webScrollView.contentOffset = CGPointMake(0, 0-self.headerViewHeight);
+    
+    [self setNeedsLayout];
+}
+
+#pragma mark - Private Methods
+
 -(void) createWebView {
 	
     if (self.webView == nil)
@@ -68,7 +159,7 @@
         self.footerViewHeight = 0;
         
         // create webview
-        self.webView = [[UIWebView alloc] init];
+        _webView = [[UIWebView alloc] init];
         self.webView.delegate = self;
         self.webView.backgroundColor = [UIColor whiteColor];
         [self addSubview:self.webView];
@@ -141,63 +232,7 @@
 	[self layoutHeaderAndFooterViews];
 }
 
--(void) setHeaderView:(UIView *)view {
-    
-	// remove old header if there is one
-	if (self->_headerView) {
-		if ([self->_headerView superview] == self) {
-			[self->_headerView removeFromSuperview];
-		}
-		self->_headerView = nil;
-	}
-	
-	// set new one
-	self->_headerView = view;
-	
-	[self setNeedsLayout];
-}
 
--(UIView*) headerView {
-	return self->_headerView;
-}
-
--(void) setFooterView:(UIView *)view {
-	
-	// remove old footer if there is one
-	if (self->_footerView) {
-		if ([self->_footerView superview] == self) {
-			[self->_footerView removeFromSuperview];
-		}
-		self->_footerView = nil;
-	}
-	
-	// set new one
-	self->_footerView = view;
-	
-	[self setNeedsLayout];
-}
-
--(UIView*) footerView {
-	return self->_footerView;
-}
-
--(void) setHeaderViewHeight:(float)height {
-	self->_headerViewHeight = height;
-	[self setNeedsLayout];
-}
-
--(float) headerViewHeight {
-	return self->_headerViewHeight;
-}
-
--(void) setFooterViewHeight:(float)height {
-	self->_footerViewHeight = height;
-	[self setNeedsLayout];
-}
-
--(float) footerViewHeight {
-	return self->_footerViewHeight;
-}
 
 #pragma mark UIWebViewDelegate
 
@@ -262,31 +297,6 @@
     [self recalculateContentHeight];
 	
 	[self setNeedsLayout];
-}
-
-- (void)recalculateContentHeight {
-    NSString* bottomDivID = [NSString stringWithFormat:@"bottomdiv%u", arc4random()];
-    [self.webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@" \
-                                                          var ele = document.createElement('div'); \
-                                                          ele.setAttribute('id', '%@'); \
-                                                          ele.setAttribute('style', 'width: 100%%; height: 1px; clear: both;'); \
-                                                          document.body.appendChild(ele);", bottomDivID]];
-    
-    // get the actual content size of the body
-    self.actualContentHeight = [[self.webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@"document.getElementById('%@').offsetTop", bottomDivID]] floatValue];
-    if (self.actualContentHeight < 1.0) {
-        self.actualContentHeight = self.frame.size.height / 2 - self.headerViewHeight - self.footerViewHeight;
-    }
-    
-    self.actualContentWidth = self.webScrollView.contentSize.width;
-    if (self.actualContentWidth < 1.0) {
-        self.actualContentWidth = self.frame.size.width;
-    }
-    
-    self.webScrollView.contentInset = UIEdgeInsetsMake(self.headerViewHeight, 0, self.footerViewHeight, 0);
-    self.webScrollView.contentOffset = CGPointMake(0, 0-self.headerViewHeight);
-    
-    [self setNeedsLayout];
 }
 
 - (void)webViewDidStartLoad:(UIWebView *)sender {

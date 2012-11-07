@@ -16,9 +16,9 @@
 
 @interface UIWebViewWithHeaderView : UIView<UIWebViewDelegate, UIScrollViewDelegate>
 
-@property(nonatomic,retain) UIWebView* webView;
-@property(nonatomic,retain) UIView *headerView;
-@property(nonatomic,retain) UIView *footerView;
+@property(nonatomic,readonly) UIWebView* webView;
+@property(nonatomic,strong) UIView *headerView;
+@property(nonatomic,strong) UIView *footerView;
 @property(nonatomic,assign) float headerViewHeight;
 @property(nonatomic,assign) float footerViewHeight;
 @property(nonatomic,assign) id<UIWebViewDelegate> delegate;
